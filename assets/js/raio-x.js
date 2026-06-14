@@ -70,7 +70,7 @@
 
   function clearTimers() { timers.forEach(clearTimeout); timers = []; }
   function addTimer(fn, ms) { const id = setTimeout(fn, ms); timers.push(id); return id; }
-  function imagePath(name) { return `assets/images/${name}`; }
+  function imagePath(name) { return `assets/images-v2/${name}`; }
 
   function setLegalLinks() {
     [["privacyLink",cfg.privacyUrl],["termsLink",cfg.termsUrl],["contactLink",cfg.contactUrl]].forEach(([id,url]) => {
@@ -84,6 +84,7 @@
 
   function updateChrome(step) {
     const isOffer = step.type === "offer";
+    const hasInlineQuestionNav = step.type === "question" || step.type === "multi";
     screen.classList.toggle("screen-offer", isOffer);
     progressWrap.classList.toggle("hidden", isOffer);
     const count = countedIndex();
@@ -91,7 +92,7 @@
     progressSection.textContent = sections[step.section] || "Diagnóstico";
     progressLabel.textContent = `${count} de ${total}`;
     progressBar.style.width = `${Math.round((count / total) * 100)}%`;
-    navRow.classList.toggle("hidden", state.step === 0 || isOffer || step.type === "processing");
+    navRow.classList.toggle("hidden", state.step === 0 || isOffer || step.type === "processing" || hasInlineQuestionNav);
   }
 
   function trackView(step) {
@@ -133,7 +134,9 @@
 
   function renderQuestion(step) {
     const current = step.type === "multi" ? (Array.isArray(state.answers[step.id]) ? state.answers[step.id] : []) : state.answers[step.id];
-    screen.innerHTML = `<div class="quiz-layout"><div class="quiz-copy"><span class="eyebrow">${escapeHtml(sections[step.section])}</span><h2>${escapeHtml(step.title)}</h2><p class="lead">${escapeHtml(step.subtitle)}</p><div class="options${step.options.length > 4 ? " two-cols" : ""}">${step.options.map(item => optionHtml(item[0],item[1],item[2],step.type === "multi" ? current.includes(item[0]) : current === item[0])).join("")}</div>${step.type === "multi" ? '<div class="multi-actions"><button class="btn btn-primary" id="multiContinue" type="button">Continuar →</button></div>' : ""}${step.safety ? `<p class="safety-note">${escapeHtml(step.safety)}</p>` : ""}</div><aside class="visual-card"><img src="${imagePath(step.image)}" alt=""><div class="visual-note">${escapeHtml(step.note || "Cada resposta deixa seu diagnóstico mais específico.")}</div></aside></div>`;
+    const continueButton = '<button class="btn btn-primary" id="questionContinue" type="button">Continuar →</button>';
+    const backButton = state.step > 0 ? '<button class="btn btn-back" id="questionBack" type="button">← Voltar</button>' : "";
+    screen.innerHTML = `<div class="quiz-layout"><div class="quiz-copy"><span class="eyebrow">${escapeHtml(sections[step.section])}</span><h2>${escapeHtml(step.title)}</h2><p class="lead">${escapeHtml(step.subtitle)}</p><div class="options${step.options.length > 4 ? " two-cols" : ""}">${step.options.map(item => optionHtml(item[0],item[1],item[2],step.type === "multi" ? current.includes(item[0]) : current === item[0])).join("")}</div>${step.safety ? `<p class="safety-note">${escapeHtml(step.safety)}</p>` : ""}<div class="question-actions">${continueButton}${backButton}</div></div><aside class="visual-card"><img src="${imagePath(step.image)}" alt=""><div class="visual-note">${escapeHtml(step.note || "Cada resposta deixa seu diagnóstico mais específico.")}</div></aside></div>`;
 
     screen.querySelectorAll(".option").forEach(button => button.addEventListener("click", () => {
       const value = button.dataset.value;
@@ -147,20 +150,22 @@
       }
       state.answers[step.id] = value;
       persist();
-      window.RXTrack?.event?.("question_answered", { step:state.step + 1, question:step.id, answer:value, answers:{ [step.id]:value }, section:step.section, progress:Math.round((countedIndex()/countedSteps().length)*100) });
-      button.classList.add("selected");
-      addTimer(next, 190);
+      renderQuestion(step);
     }));
 
-    document.getElementById("multiContinue")?.addEventListener("click", () => {
-      const values = state.answers[step.id] || [];
-      if (!values.length) {
+    document.getElementById("questionContinue")?.addEventListener("click", () => {
+      const answer = state.answers[step.id];
+      const hasAnswer = step.type === "multi" ? Array.isArray(answer) && answer.length > 0 : Boolean(answer);
+      if (!hasAnswer) {
         screen.querySelector(".options")?.animate([{transform:"translateX(-4px)"},{transform:"translateX(4px)"},{transform:"translateX(0)"}],{duration:220});
         return;
       }
-      window.RXTrack?.event?.("question_answered", { step:state.step + 1, question:step.id, answer:values.join(","), answers:{ [step.id]:values }, section:step.section });
+      const trackedAnswer = Array.isArray(answer) ? answer.join(",") : answer;
+      window.RXTrack?.event?.("question_answered", { step:state.step + 1, question:step.id, answer:trackedAnswer, answers:{ [step.id]:answer }, section:step.section, progress:Math.round((countedIndex()/countedSteps().length)*100) });
       next();
     });
+
+    document.getElementById("questionBack")?.addEventListener("click", back);
   }
 
   function renderInfo(step) {
@@ -183,37 +188,38 @@
     document.getElementById("infoContinue").addEventListener("click", next);
   }
 
-  function protectedVideo(id, posterTitle, posterImage) {
-    const origin = encodeURIComponent(location.origin === "null" ? cfg.siteUrl : location.origin);
-    const src = `https://www.youtube-nocookie.com/embed/${id}?enablejsapi=1&origin=${origin}&controls=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&fs=0&disablekb=1`;
-    const posterStyle = posterImage ? ` style="background-image:linear-gradient(135deg, rgba(17,31,36,.72), rgba(60,93,100,.48)), url('${imagePath(posterImage)}');"` : '';
-    return `<div class="protected-video"><iframe id="ytFrame" src="${src}" title="Vídeo explicativo" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin"></iframe><div class="video-shield" aria-hidden="true"></div><div class="video-poster" id="videoPoster"${posterStyle}><div><strong>${escapeHtml(posterTitle)}</strong><button class="video-play" id="videoPlay" type="button" aria-label="Reproduzir vídeo">▶</button></div></div></div><div class="video-controls"><button id="videoToggle" type="button">Pausar vídeo</button><span>Player protegido: links e recomendações não são clicáveis.</span></div>`;
+  const vturbPlayers = {
+    1: {
+      id: "vid-6a2e9e9a66b98f0059f8aeb7",
+      script: "https://scripts.converteai.net/ea5f0d74-737f-4271-96fd-f4bacd8f8e56/players/6a2e9e9a66b98f0059f8aeb7/v4/player.js"
+    },
+    2: {
+      id: "vid-6a2e9eb2523d570c096e0133",
+      script: "https://scripts.converteai.net/ea5f0d74-737f-4271-96fd-f4bacd8f8e56/players/6a2e9eb2523d570c096e0133/v4/player.js"
+    }
+  };
+
+  function vturbPlayerHtml(player) {
+    return `<div class="vturb-video"><vturb-smartplayer id="${escapeHtml(player.id)}" style="display: block; margin: 0 auto; width: 100%; max-width: 400px;"></vturb-smartplayer></div>`;
   }
 
-  function youtubeCommand(command) {
-    const frame = document.getElementById("ytFrame");
-    frame?.contentWindow?.postMessage(JSON.stringify({ event:"command", func:command, args:[] }), "*");
+  function loadVturbPlayer(player) {
+    document.querySelectorAll("script[data-recuperese-vturb]").forEach(script => script.remove());
+    const script = document.createElement("script");
+    script.src = player.script;
+    script.async = true;
+    script.dataset.recupereseVturb = player.id;
+    document.head.appendChild(script);
   }
 
   function renderVideo(step) {
-    const videoId = step.video === 1 ? cfg.video1Id : cfg.video2Id;
-    const posterImage = step.video === 1 ? "karina-profile.webp" : "karina-movement-home.webp";
-    const posterTitle = step.video === 1 ? "Entenda por que seu corpo continua travando" : "Veja o caminho indicado para o seu perfil";
-    screen.innerHTML = `<div class="video-layout video-layout--single"><div class="video-shell wide"><span class="eyebrow">VÍDEO ${step.video}</span><h2>${escapeHtml(step.title)}</h2><p class="lead">${escapeHtml(step.subtitle)}</p>${protectedVideo(videoId, posterTitle, posterImage)}<div style="margin-top:20px"><button class="btn btn-primary" id="videoContinue" type="button">${step.final ? "Quero destravar meu corpo →" : "Continuar o diagnóstico →"}</button></div></div></div>`;
-    let playing = false;
-    document.getElementById("videoPlay").addEventListener("click", () => {
-      document.getElementById("videoPoster").classList.add("hidden");
-      youtubeCommand("playVideo");
-      playing = true;
-      document.getElementById("videoToggle").textContent = "Pausar vídeo";
+    const player = vturbPlayers[step.video];
+    screen.innerHTML = `<div class="video-layout video-layout--single"><div class="video-shell wide"><span class="eyebrow">VÍDEO ${step.video}</span><h2>${escapeHtml(step.title)}</h2><p class="lead">${escapeHtml(step.subtitle)}</p>${vturbPlayerHtml(player)}<div style="margin-top:20px"><button class="btn btn-primary" id="videoContinue" type="button">${step.final ? "Quero destravar meu corpo →" : "Continuar o diagnóstico →"}</button></div></div></div>`;
+    loadVturbPlayer(player);
+    document.getElementById(player.id).addEventListener("pointerdown", () => {
       window.RXTrack?.event?.(`video_${step.video}_started`, { step:state.step + 1, screen_id:step.id, section:step.section });
-    });
-    document.getElementById("videoToggle").addEventListener("click", () => {
-      playing = !playing;
-      youtubeCommand(playing ? "playVideo" : "pauseVideo");
-      document.getElementById("videoToggle").textContent = playing ? "Pausar vídeo" : "Continuar vídeo";
-    });
-    document.getElementById("videoContinue").addEventListener("click", () => { youtubeCommand("pauseVideo"); next(); });
+    }, { once:true });
+    document.getElementById("videoContinue").addEventListener("click", next);
   }
 
   function renderProcessing() {
@@ -245,11 +251,15 @@
 
   function testimonialVideosHtml() {
     const videos = [
-      { id:"MIRK9hEC91g", title:"Depoimento 1" },
-      { id:"wmzNVA5m6ic", title:"Depoimento 2" },
-      { id:"p58j3-VIG48", title:"Depoimento 3" }
+      { id:"Xm6-3iAzBxU", title:"Depoimento de atleta" },
+      { id:"smwKOFVWrPk", title:"Depoimento sobre cervical e bruxismo" },
+      { id:"QEn5nJbQhak", title:"Depoimento sobre lombar e bursite" }
     ];
-    return `<div class="testimonial-video-grid">${videos.map(video => `<article class="testimonial-video-card"><div class="testimonial-video-frame"><iframe src="https://www.youtube-nocookie.com/embed/${video.id}?rel=0&modestbranding=1&playsinline=1" title="${video.title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div></article>`).join("")}</div>`;
+    return `<div class="testimonial-video-grid">${videos.map(video => {
+      const embedUrl = `https://www.youtube.com/embed/${video.id}?autoplay=1&playsinline=1&rel=0&modestbranding=1&controls=1&fs=0&iv_load_policy=3`;
+      const posterUrl = `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`;
+      return `<article class="testimonial-video-card"><div class="testimonial-video-frame"><button class="testimonial-video-poster" type="button" data-video-url="${escapeHtml(embedUrl)}" aria-label="Reproduzir ${escapeHtml(video.title)}"><img src="${escapeHtml(posterUrl)}" alt="" loading="lazy"><span aria-hidden="true">▶</span></button></div></article>`;
+    }).join("")}</div>`;
   }
 
   function offerHtml(result) {
@@ -281,6 +291,17 @@
   function renderOffer() {
     const result = window.RXCalc.calculateResult(state.answers);
     screen.innerHTML = offerHtml(result);
+    screen.querySelectorAll(".testimonial-video-poster").forEach(button => button.addEventListener("click", () => {
+      const frame = button.closest(".testimonial-video-frame");
+      if (!frame) return;
+      const iframe = document.createElement("iframe");
+      iframe.src = button.dataset.videoUrl;
+      iframe.title = button.getAttribute("aria-label") || "Depoimento em vídeo";
+      iframe.allow = "autoplay; encrypted-media; picture-in-picture";
+      iframe.referrerPolicy = "strict-origin-when-cross-origin";
+      iframe.allowFullscreen = true;
+      frame.replaceChildren(iframe);
+    }));
     window.RXIntegrations?.decorateCheckoutLinks?.(screen);
     screen.querySelectorAll(".checkout-link").forEach(link => link.addEventListener("click", event => {
       event.preventDefault();
