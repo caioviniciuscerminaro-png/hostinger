@@ -1,0 +1,12 @@
+{
+  "checkoutProvider": "Hotmart",
+  "checkoutUrl": "https://pay.hotmart.com/N98351248X?off=w76sejxy&checkoutMode=10",
+  "discountCheckoutUrl": "https://pay.hotmart.com/N98351248X?off=w76sejxy&checkoutMode=10&offDiscount=20OFF",
+  "productPrice": 97.00,
+  "productInstallments": "11x de R$ 10,77",
+  "discountPrice": 77.60,
+  "discountInstallments": "11x de R$ 8,62",
+  "accessTerm": "Acesso imediato pela Hotmart",
+  "guaranteeDays": 7,
+  "salesTrackingEnabled": false
+}

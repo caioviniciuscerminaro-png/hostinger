@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Admin | Metodo Recupere-se</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./admin.css?v=20260614-5">
+</head>
+<body>
+  <main class="dashboard">
+    <header class="dashboard-header">
+      <div class="brand-lockup">
+        <img src="../assets/images/logo-recuperese.webp" alt="Metodo Recupere-se">
+        <div><strong>Metodo Recupere-se</strong><span>Painel de retencao e diagnostico</span></div>
+      </div>
+      <div class="header-actions">
+        <button class="button button-ghost" id="maintenanceBtn" type="button">Consolidar duplicados</button>
+        <button class="button button-ghost" id="refreshBtn" type="button">Atualizar</button>
+        <button class="button button-light" id="logoutBtn" type="button">Sair</button>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Areas do painel">
+      <button class="tab active" data-tab="overview" type="button">Visao geral</button>
+      <button class="tab" data-tab="audience" type="button">Perfil do publico e insights de copy</button>
+    </nav>
+
+    <section class="filter-card">
+      <div class="filter-grid">
+        <label>De<input id="dateFrom" type="date"></label>
+        <label>Ate<input id="dateTo" type="date"></label>
+        <label>UTM source<select id="utmSource"><option value="">Todos</option></select></label>
+        <label>UTM medium<select id="utmMedium"><option value="">Todos</option></select></label>
+        <label>Campanha<select id="utmCampaign"><option value="">Todas</option></select></label>
+        <label>Criativo / conteudo<select id="utmContent"><option value="">Todos</option></select></label>
+        <label>UTM term<select id="utmTerm"><option value="">Todos</option></select></label>
+        <label>Estado<select id="region"><option value="">Todos</option></select></label>
+        <label>Cidade<select id="city"><option value="">Todas</option></select></label>
+        <label>Dispositivo<select id="device"><option value="">Todos</option></select></label>
+        <label>Resultado<select id="resultLevel"><option value="">Todos</option></select></label>
+        <div class="filter-actions"><button class="button button-primary" id="applyFilters" type="button">Atualizar</button><button class="button button-primary" id="clearFilters" type="button">Limpar tudo</button></div>
+      </div>
+    </section>
+
+    <div class="status-strip" id="statusStrip">Aguardando dados.</div>
+    <section class="state-card hidden" id="errorState"></section>
+
+    <section class="tab-panel active" data-panel="overview">
+      <div class="metric-grid" id="summaryCards"></div>
+
+      <article class="panel">
+        <div class="panel-heading"><div><span class="kicker">Funil por etapa</span><h2>Retencao e abandono</h2></div><span>Visitantes unicos por etapa</span></div>
+        <div class="funnel-bars" id="funnelBars"></div>
+        <div class="table-scroller"><table><thead><tr><th>Etapa</th><th>Visualizacoes</th><th>Avancaram</th><th>Retencao</th><th>Abandono</th><th>Tempo medio</th></tr></thead><tbody id="funnelTable"></tbody></table></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading"><div><span class="kicker">Analise por UTM</span><h2>Funil, eventos e checkout em uma unica tabela</h2></div><span>20 linhas por pagina · clique nos titulos para ordenar</span></div>
+        <p class="panel-help">A tabela agrupa um unico valor por vez e permite cruzar campanha, criativo, origem, progresso e intencao de compra.</p>
+        <div class="utm-controls">
+          <label>Buscar em qualquer UTM<input id="utmSearch" placeholder="Campanha, criativo, source..."></label>
+          <label>Agrupar por<select id="utmGroup"><option value="content">Criativo</option><option value="campaign">Campanha</option><option value="source">Source</option><option value="medium">Medium</option><option value="term">Term</option></select></label>
+          <label>Source<select id="utmTableSource"><option value="">Todos</option></select></label>
+          <label>Medium<select id="utmTableMedium"><option value="">Todos</option></select></label>
+          <label>Campanha<select id="utmTableCampaign"><option value="">Todas</option></select></label>
+          <label>Criativo<select id="utmTableContent"><option value="">Todos</option></select></label>
+          <label>Term<select id="utmTableTerm"><option value="">Todos</option></select></label>
+        </div>
+        <div class="table-toolbar"><strong id="utmCount">0 grupos</strong><span id="utmSortLabel"></span><button class="mini-button" id="clearUtmTable" type="button">Limpar filtros da tabela</button><div class="pager"><button id="utmPrev" type="button">‹</button><span id="utmPage">Pagina 1 de 1</span><button id="utmNext" type="button">›</button></div></div>
+        <div class="table-scroller table-tall"><table class="wide-table"><thead id="utmHead"></thead><tbody id="utmBody"></tbody></table></div>
+      </article>
+
+      <div class="two-column">
+        <article class="panel"><div class="panel-heading"><div><span class="kicker">Acoes</span><h2>Conversoes principais</h2></div></div><div class="conversion-list" id="conversionList"></div></article>
+        <article class="panel"><div class="panel-heading"><div><span class="kicker">Trafego</span><h2>Dispositivos e origem</h2></div></div><div class="split-lists"><div id="deviceList"></div><div id="sourceList"></div></div></article>
+      </div>
+
+      <article class="panel"><div class="panel-heading"><div><span class="kicker">Diagnostico</span><h2>5 etapas com maior perda</h2></div><span>Ordenadas pelo numero de pessoas que nao avancaram</span></div><div class="dropoff-list" id="dropoffList"></div></article>
+
+      <article class="panel">
+        <div class="panel-heading"><div><span class="kicker">Publico</span><h2>Localizacao e visitantes individuais</h2></div><span>Uma pessoa por linha, mesmo quando retorna</span></div>
+        <div class="geo-grid"><div class="geo-card"><h3>Acessos por estado</h3><div id="stateList"></div></div><div class="geo-card"><h3>Acessos por cidade</h3><div id="cityList"></div></div></div>
+        <div class="visitor-controls"><label>Buscar por ID, cidade ou UTM<input id="visitorSearch" placeholder="Digite para buscar"></label><label>Checkout<select id="visitorCheckout"><option value="">Todos os visitantes</option><option value="yes">Clicou no checkout</option><option value="no">Nao clicou</option></select></label><div class="pager"><button id="visitorPrev" type="button">Anterior</button><span id="visitorPage">Pagina 1 de 1</span><button id="visitorNext" type="button">Proxima</button></div></div>
+        <div class="table-scroller"><table class="visitor-table"><thead><tr><th>Atualizado</th><th>Visitante</th><th>Local</th><th>Visitas</th><th>Progresso</th><th>Resultado</th><th>Origem</th><th>Checkout</th><th>Respostas</th></tr></thead><tbody id="visitorBody"></tbody></table></div>
+      </article>
+    </section>
+
+    <section class="tab-panel" data-panel="audience">
+      <div class="audience-summary" id="audienceSummary"></div>
+      <article class="panel"><div class="panel-heading"><div><span class="kicker">Insights de copy</span><h2>Leituras acionaveis do publico</h2></div></div><ul class="insight-list" id="insightList"></ul></article>
+      <article class="panel"><div class="panel-heading"><div><span class="kicker">Comparativo</span><h2>Publico total x alta intencao</h2></div><span>Alta intencao = oferta, checkout ou aceite do popup</span></div><div class="distribution-grid" id="distributionGrid"></div></article>
+    </section>
+  </main>
+
+  <div class="login-overlay" id="loginOverlay">
+    <form class="login-card" id="loginForm">
+      <img src="../assets/images/logo-recuperese.webp" alt="Metodo Recupere-se">
+      <h1>Entrar no painel</h1><p>Digite somente a senha administrativa.</p>
+      <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Senha" required>
+      <button class="button button-primary button-full" type="submit">Entrar</button><span class="login-error" id="loginError"></span>
+    </form>
+  </div>
+
+  <div class="modal hidden" id="answerModal"><div class="modal-card"><button class="modal-close" id="closeModal" type="button">×</button><span class="kicker">Visitante</span><h2 id="modalTitle">Respostas individuais</h2><div id="modalContent"></div></div></div>
+  <script src="../assets/js/config.js"></script>
+  <script src="./admin.js?v=20260614-5"></script>
+</body>
+</html>
